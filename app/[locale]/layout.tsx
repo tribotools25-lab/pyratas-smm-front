@@ -14,7 +14,7 @@ import DirectionProvider from "@/providers/direction-provider";
 import AuthProvider from "@/providers/auth.provider";
 
 export const metadata: Metadata = {
-  title: "Dashcode admin Template",
+  title: "Pyratas — Social Media Marketing",
   description: "created by codeshaper",
 };
 
@@ -52,3 +52,4 @@ export default async function RootLayout({
     </html>
   );
 }
+
