@@ -1,7 +1,4 @@
-export const metadata = {
-  title: "Pyratas SMM",
-  description: "Pyratas SMM Front",
-};
+import "@/app/globals.css";
 
 export default function RootLayout({
   children,
@@ -14,10 +11,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    window.location.href = "/login";
-  }
-}, []);
