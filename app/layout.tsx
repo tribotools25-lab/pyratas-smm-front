@@ -1,5 +1,3 @@
-import "@/app/globals.css";
-
 export const metadata = {
   title: "Pyratas SMM",
   description: "Pyratas SMM Front",
