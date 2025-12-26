@@ -1,74 +1,37 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
-
-export function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+function mustBase() {
+  // sempre same-origin, porque /api/backend faz proxy pro backend real
+  return "";
 }
 
-export function setToken(token: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("token", token);
-}
-
-export function logout(redirectTo: string = "/login") {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem("token");
-  window.location.href = redirectTo;
-}
-
-export function isLoggedIn() {
-  return !!getToken();
-}
-
-function authHeaders(): Record<string, string> {
-  const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function handle(res: Response) {
+async function handle(res: Response, method: string, path: string) {
   if (res.status === 401) {
-    // opcional: desloga automático se expirar
-    logout("/login");
-    throw new Error("Não autenticado");
+    // se não autenticado, joga pro login (middleware já faz, mas isso ajuda em chamadas via fetch)
+    throw new Error("unauthorized");
   }
   if (!res.ok) {
-    throw new Error(await res.text());
+    const txt = await res.text().catch(() => "");
+    throw new Error(`${method} ${path} failed: ${res.status} ${txt}`);
   }
-  return res.json();
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return res.json();
+  return res.text();
 }
 
 export async function apiGet(path: string) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
+  const res = await fetch(`${mustBase()}/api/backend${path}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" } as Record<string, string>,
     cache: "no-store",
   });
-
-  return handle(res);
+  return handle(res, "GET", path);
 }
 
 export async function apiPost(path: string, body?: any) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${mustBase()}/api/backend${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
-    body: JSON.stringify(body ?? {}),
+    headers: { "Content-Type": "application/json" } as Record<string, string>,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: "no-store",
   });
-
-  return handle(res);
+  return handle(res, "POST", path);
 }
-
-export function setToken(token: string) {
-  localStorage.setItem("token", token);
-  document.cookie = `token=${token}; Path=/; SameSite=Lax;`;
-}
-
-export function clearToken() {
-  localStorage.removeItem("token");
-  document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax;";
-}
-
