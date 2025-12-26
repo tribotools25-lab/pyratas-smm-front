@@ -1,33 +1,49 @@
 import createMiddleware from "next-intl/middleware";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { locales } from "@/config";
 
-// ✅ Ajuste aqui seu padrão
 const DEFAULT_LOCALE = "pt";
 
+const i18n = createMiddleware({
+  locales,
+  defaultLocale: DEFAULT_LOCALE,
+});
+
+function isPublicPath(pathname: string) {
+  // libera login e auth endpoints
+  return (
+    pathname.includes("/login") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/_next") ||
+    pathname === "/favicon.ico"
+  );
+}
+
 export default function middleware(request: NextRequest) {
-  // Se você quiser continuar aceitando o header, ok — mas com fallback pro padrão real
-  const headerLocale = request.headers.get("dashcode-locale");
-  const defaultLocale =
-    (headerLocale && locales.includes(headerLocale as any) ? headerLocale : null) ||
-    DEFAULT_LOCALE;
+  const { pathname } = request.nextUrl;
 
-  const handleI18nRouting = createMiddleware({
-    locales,
-    defaultLocale,
-  });
+  // primeiro aplica i18n (garante /pt/..., /en/..., etc)
+  const response = i18n(request);
 
-  const response = handleI18nRouting(request);
+  if (isPublicPath(pathname)) return response;
 
-  // mantém o header (opcional)
-  response.headers.set("dashcode-locale", defaultLocale);
+  // token no cookie (HttpOnly)
+  const token = request.cookies.get("pyratas_token")?.value;
+
+  // se não tem token, manda pra /{locale}/login
+  if (!token) {
+    const locale = pathname.split("/")[1];
+    const safeLocale = locales.includes(locale as any) ? locale : DEFAULT_LOCALE;
+
+    const url = request.nextUrl.clone();
+    url.pathname = `/${safeLocale}/login`;
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
 
   return response;
 }
 
 export const config = {
-  matcher: [
-    // Rotas sem arquivo/extensão
-    "/((?!api|_next|.*\\..*).*)",
-  ],
+  matcher: ["/((?!_next|.*\\..*).*)"],
 };
