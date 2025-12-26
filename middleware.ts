@@ -1,32 +1,33 @@
-import createMiddleware from 'next-intl/middleware';
-import {NextRequest, NextResponse} from 'next/server';
-import {locales} from '@/config';
+import createMiddleware from "next-intl/middleware";
+import { NextRequest } from "next/server";
+import { locales } from "@/config";
 
-export default async function middleware(request: NextRequest) {
-  
- 
+// ✅ Ajuste aqui seu padrão
+const DEFAULT_LOCALE = "pt";
 
+export default function middleware(request: NextRequest) {
+  // Se você quiser continuar aceitando o header, ok — mas com fallback pro padrão real
+  const headerLocale = request.headers.get("dashcode-locale");
+  const defaultLocale =
+    (headerLocale && locales.includes(headerLocale as any) ? headerLocale : null) ||
+    DEFAULT_LOCALE;
 
-  // Step 1: Use the incoming request (example)
-  const defaultLocale = request.headers.get('dashcode-locale') || 'en';
- 
-  // Step 2: Create and call the next-intl middleware (example)
   const handleI18nRouting = createMiddleware({
     locales,
-    defaultLocale
-    
+    defaultLocale,
   });
+
   const response = handleI18nRouting(request);
- 
-  // Step 3: Alter the response (example)
-  response.headers.set('dashcode-locale', defaultLocale);
 
+  // mantém o header (opcional)
+  response.headers.set("dashcode-locale", defaultLocale);
 
- 
   return response;
 }
- 
+
 export const config = {
-  // Match only internationalized pathnames
-  matcher: ['/', '/(ar|en)/:path*']
+  matcher: [
+    // Rotas sem arquivo/extensão
+    "/((?!api|_next|.*\\..*).*)",
+  ],
 };
