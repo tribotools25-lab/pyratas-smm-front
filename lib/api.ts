@@ -61,3 +61,14 @@ export async function apiPost(path: string, body?: any) {
 
   return handle(res);
 }
+
+export function setToken(token: string) {
+  localStorage.setItem("token", token);
+  document.cookie = `token=${token}; Path=/; SameSite=Lax;`;
+}
+
+export function clearToken() {
+  localStorage.removeItem("token");
+  document.cookie = "token=; Path=/; Max-Age=0; SameSite=Lax;";
+}
+
