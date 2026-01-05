@@ -1,4 +1,3 @@
-// app/login/LoginClient.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -34,12 +33,11 @@ export default function LoginClient() {
       const res = await fetch(`${BACKEND_URL}/api/auth/login-json`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // ✅ cookie HttpOnly
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
       if (!res.ok) throw new Error("Credenciais inválidas");
-
       window.location.href = next;
     } catch {
       setError("Login inválido");
@@ -53,14 +51,9 @@ export default function LoginClient() {
     setSuccess("");
 
     const e = email.trim().toLowerCase();
-    if (!isValidEmail) {
-      setError("Digite um e-mail válido.");
-      return;
-    }
-    if (!password || password.length < 6) {
-      setError("Sua senha deve ter no mínimo 6 caracteres.");
-      return;
-    }
+    if (!isValidEmail) return setError("Digite um e-mail válido.");
+    if (!password || password.length < 6)
+      return setError("Senha mínima: 6 caracteres.");
 
     setLoading(true);
 
@@ -69,21 +62,12 @@ export default function LoginClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          email: e,
-          password,
-          role: "user",
-        }),
+        body: JSON.stringify({ email: e, password, role: "user" }),
       });
 
       const data = await res.json().catch(() => ({}));
+      if (!res.ok) return setError(data?.detail || "Erro ao criar conta.");
 
-      if (!res.ok) {
-        setError(data?.detail || "Não foi possível criar a conta.");
-        return;
-      }
-
-      // Se usuário já existir, seu backend retorna ok True também.
       setSuccess("Conta criada! Agora faça login.");
       setMode("login");
       setPassword("");
@@ -94,19 +78,12 @@ export default function LoginClient() {
     }
   }
 
-  const onPrimary = mode === "login" ? handleLogin : handleRegister;
-
   return (
-    <div className="max-w-sm mx-auto mt-20 space-y-5">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-white">Pyratas</h1>
-        <p className="text-sm text-neutral-400">
-          Acesse sua conta para gerenciar créditos e pedidos
-        </p>
-      </div>
+    <div className="max-w-sm mx-auto mt-20 space-y-4">
+      <h1 className="text-2xl font-bold text-white text-center">Pyratas</h1>
 
-      {/* Tabs */}
-      <div className="flex rounded-lg overflow-hidden border border-neutral-800">
+      {/* Botões bem explícitos */}
+      <div className="flex gap-2">
         <button
           type="button"
           onClick={() => {
@@ -114,14 +91,13 @@ export default function LoginClient() {
             setError("");
             setSuccess("");
           }}
-          className={`w-1/2 py-2 text-sm ${
-            mode === "login"
-              ? "bg-neutral-900 text-white"
-              : "bg-neutral-950 text-neutral-400 hover:text-white"
+          className={`w-1/2 px-4 py-2 rounded text-white ${
+            mode === "login" ? "bg-blue-600" : "bg-neutral-800"
           }`}
         >
           Entrar
         </button>
+
         <button
           type="button"
           onClick={() => {
@@ -129,69 +105,41 @@ export default function LoginClient() {
             setError("");
             setSuccess("");
           }}
-          className={`w-1/2 py-2 text-sm ${
-            mode === "register"
-              ? "bg-neutral-900 text-white"
-              : "bg-neutral-950 text-neutral-400 hover:text-white"
+          className={`w-1/2 px-4 py-2 rounded text-white ${
+            mode === "register" ? "bg-green-600" : "bg-neutral-800"
           }`}
         >
           Criar conta
         </button>
       </div>
 
-      {/* Form */}
-      <div className="space-y-3">
-        <input
-          className="w-full p-2 rounded bg-neutral-900 text-white border border-neutral-700"
-          placeholder="Email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+      <input
+        className="w-full p-2 rounded bg-neutral-900 text-white border border-neutral-700"
+        placeholder="Email"
+        autoComplete="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
 
-        <input
-          className="w-full p-2 rounded bg-neutral-900 text-white border border-neutral-700"
-          type="password"
-          placeholder={mode === "login" ? "Senha" : "Crie uma senha (mín. 6)"}
-          autoComplete={mode === "login" ? "current-password" : "new-password"}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+      <input
+        className="w-full p-2 rounded bg-neutral-900 text-white border border-neutral-700"
+        type="password"
+        placeholder={mode === "login" ? "Senha" : "Crie uma senha (mín. 6)"}
+        autoComplete={mode === "login" ? "current-password" : "new-password"}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
 
-        {success && (
-          <p className="text-green-500 text-sm text-center">{success}</p>
-        )}
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+      {success && <p className="text-green-500 text-sm">{success}</p>}
+      {error && <p className="text-red-500 text-sm">{error}</p>}
 
-        <button
-          onClick={onPrimary}
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white disabled:opacity-50"
-        >
-          {loading
-            ? "Aguarde..."
-            : mode === "login"
-            ? "Entrar"
-            : "Criar conta"}
-        </button>
-
-        {mode === "login" && (
-          <p className="text-xs text-neutral-500 text-center">
-            Ainda não tem conta?{" "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode("register");
-                setError("");
-                setSuccess("");
-              }}
-              className="text-blue-400 hover:text-blue-300"
-            >
-              Criar agora
-            </button>
-          </p>
-        )}
-      </div>
+      <button
+        onClick={mode === "login" ? handleLogin : handleRegister}
+        disabled={loading}
+        className="w-full bg-neutral-950 border border-neutral-700 px-4 py-2 rounded text-white disabled:opacity-60"
+      >
+        {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar minha conta"}
+      </button>
     </div>
   );
 }
