@@ -12,45 +12,42 @@ const i18n = createMiddleware({
 function isPublicPath(pathname: string) {
   return (
     pathname.includes("/login") ||
-    pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   );
 }
 
-function getLocaleFromPath(pathname: string) {
-  const seg = pathname.split("/")[1] || "";
-  return locales.includes(seg as any) ? seg : DEFAULT_LOCALE;
-}
-
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1) deixa o next-intl cuidar da rota de locale
-  const i18nResponse = i18n(request);
+  // ✅ 1) NUNCA interceptar rotas do Next /api
+  if (pathname.startsWith("/api")) {
+    return NextResponse.next();
+  }
 
-  // ✅ Se o next-intl quiser redirecionar (ex: / -> /pt), NÃO mexe em mais nada.
-  const location = i18nResponse.headers.get("location");
-  if (location) return i18nResponse;
+  // ✅ 2) aplica i18n só em páginas
+  const response = i18n(request);
 
-  // 2) libera rotas públicas
-  if (isPublicPath(pathname)) return i18nResponse;
+  // ✅ 3) libera rotas públicas
+  if (isPublicPath(pathname)) return response;
 
-  // 3) valida cookie
+  // ✅ 4) auth guard
   const token = request.cookies.get("pyratas_token")?.value;
 
   if (!token) {
-    const locale = getLocaleFromPath(pathname);
+    const locale = pathname.split("/")[1];
+    const safeLocale = locales.includes(locale as any) ? locale : DEFAULT_LOCALE;
 
     const url = request.nextUrl.clone();
-    url.pathname = `/${locale}/login`;
-    url.searchParams.set("next", pathname); // se quiser preservar query, me fala que eu ajusto
+    url.pathname = `/${safeLocale}/login`;
+    url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  return i18nResponse;
+  return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next|.*\\..*).*)"],
+  // ✅ IMPORTANTÍSSIMO: exclui /api do matcher
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
 };
