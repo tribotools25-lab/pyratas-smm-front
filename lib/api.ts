@@ -1,37 +1,35 @@
-function mustBase() {
-  // sempre same-origin, porque /api/backend faz proxy pro backend real
-  return "";
-}
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE || "https://pyratas-smm-api.onrender.com";
 
-async function handle(res: Response, method: string, path: string) {
-  if (res.status === 401) {
-    // se não autenticado, joga pro login (middleware já faz, mas isso ajuda em chamadas via fetch)
-    throw new Error("unauthorized");
-  }
+export async function apiPost(path: string, body: any) {
+  const url = `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(`${method} ${path} failed: ${res.status} ${txt}`);
+    throw new Error(txt || `HTTP ${res.status}`);
   }
-  const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) return res.json();
-  return res.text();
+
+  return res.json();
 }
 
 export async function apiGet(path: string) {
-  const res = await fetch(`${mustBase()}/api/backend${path}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" } as Record<string, string>,
-    cache: "no-store",
-  });
-  return handle(res, "GET", path);
-}
+  const url = `${API_BASE}${path}`;
 
-export async function apiPost(path: string, body?: any) {
-  const res = await fetch(`${mustBase()}/api/backend${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" } as Record<string, string>,
-    body: body === undefined ? undefined : JSON.stringify(body),
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json" },
     cache: "no-store",
   });
-  return handle(res, "POST", path);
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+
+  return res.json();
 }
