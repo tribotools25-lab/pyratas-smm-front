@@ -1,34 +1,44 @@
+// app/api/backend/[...path]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.BACKEND_URL || "https://pyratas-smm-api.onrender.com";
+const BACKEND =
+  process.env.BACKEND_BASE ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://pyratas-smm-api.onrender.com";
 
-async function handler(req: NextRequest, ctx: { params: { path: string[] } }) {
-  const { path } = ctx.params;
-  const url = new URL(req.url);
+function buildTarget(req: NextRequest, pathParts: string[]) {
+  const target = new URL(BACKEND.replace(/\/$/, "") + "/" + pathParts.join("/"));
 
-  // Monta URL final no back
-  const target = `${BACKEND_URL}/${path.join("/")}${url.search}`;
+  // repassa querystring
+  req.nextUrl.searchParams.forEach((v, k) => target.searchParams.set(k, v));
+  return target;
+}
 
+async function handler(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+  const { path } = await ctx.params;
+  const url = buildTarget(req, path);
+
+  // copia headers relevantes (sem host)
   const headers = new Headers(req.headers);
   headers.delete("host");
 
-  // Se estiver usando cookie httpOnly do painel, mantém cookies
-  // (Next já encaminha cookie do mesmo domínio automaticamente; aqui só garante o header)
-  const init: RequestInit = {
+  const hasBody = !["GET", "HEAD"].includes(req.method);
+  const body = hasBody ? await req.arrayBuffer() : undefined;
+
+  const upstream = await fetch(url, {
     method: req.method,
     headers,
-    body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.text(),
+    body,
     redirect: "manual",
-  };
+  });
 
-  const resp = await fetch(target, init);
+  const respHeaders = new Headers(upstream.headers);
 
-  const respHeaders = new Headers(resp.headers);
-  // Evita cache agressivo
-  respHeaders.set("cache-control", "no-store");
+  // garante que não quebra com encoding
+  respHeaders.delete("content-encoding");
 
-  return new NextResponse(await resp.arrayBuffer(), {
-    status: resp.status,
+  return new NextResponse(upstream.body, {
+    status: upstream.status,
     headers: respHeaders,
   });
 }
