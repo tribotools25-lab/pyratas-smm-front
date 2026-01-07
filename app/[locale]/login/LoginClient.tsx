@@ -5,8 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 type Mode = "login" | "register";
-
-const BACKEND_URL = "https://pyratas-smm-api.onrender.com";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://pyratas-smm-api.onrender.com";
 
 export default function LoginClient() {
   const sp = useSearchParams();
@@ -25,16 +24,13 @@ export default function LoginClient() {
     return v.includes("@") && v.includes(".");
   }, [email]);
 
-  // =========================
-  // LOGIN (NextAuth)
-  // =========================
   async function handleLogin() {
     setError("");
     setSuccess("");
     setLoading(true);
 
     const res = await signIn("credentials", {
-      email,
+      email: email.trim().toLowerCase(),
       password,
       redirect: false,
     });
@@ -48,17 +44,13 @@ export default function LoginClient() {
     setLoading(false);
   }
 
-  // =========================
-  // REGISTER (Backend direto)
-  // =========================
   async function handleRegister() {
     setError("");
     setSuccess("");
 
     const e = email.trim().toLowerCase();
     if (!isValidEmail) return setError("Digite um e-mail válido.");
-    if (!password || password.length < 6)
-      return setError("Senha mínima: 6 caracteres.");
+    if (!password || password.length < 6) return setError("Senha mínima: 6 caracteres.");
 
     setLoading(true);
 
@@ -73,7 +65,6 @@ export default function LoginClient() {
 
       if (!res.ok) {
         setError(data?.detail || "Erro ao criar conta.");
-        setLoading(false);
         return;
       }
 
@@ -94,28 +85,16 @@ export default function LoginClient() {
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => {
-            setMode("login");
-            setError("");
-            setSuccess("");
-          }}
-          className={`w-1/2 px-4 py-2 rounded text-white ${
-            mode === "login" ? "bg-blue-600" : "bg-neutral-800"
-          }`}
+          onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
+          className={`w-1/2 px-4 py-2 rounded text-white ${mode === "login" ? "bg-blue-600" : "bg-neutral-800"}`}
         >
           Entrar
         </button>
 
         <button
           type="button"
-          onClick={() => {
-            setMode("register");
-            setError("");
-            setSuccess("");
-          }}
-          className={`w-1/2 px-4 py-2 rounded text-white ${
-            mode === "register" ? "bg-green-600" : "bg-neutral-800"
-          }`}
+          onClick={() => { setMode("register"); setError(""); setSuccess(""); }}
+          className={`w-1/2 px-4 py-2 rounded text-white ${mode === "register" ? "bg-green-600" : "bg-neutral-800"}`}
         >
           Criar conta
         </button>
