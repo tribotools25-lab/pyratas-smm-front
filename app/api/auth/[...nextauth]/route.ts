@@ -2,7 +2,7 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth";
 
-export const { handlers } = NextAuth(authConfig);
+const auth = NextAuth(authConfig);
 
-export const GET = handlers.GET;
-export const POST = handlers.POST;
+export const GET = auth.handlers.GET;
+export const POST = auth.handlers.POST;
