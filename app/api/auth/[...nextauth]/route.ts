@@ -1,12 +1,12 @@
 import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import Credentials from "next-auth/providers/credentials";
 
 const BACKEND_BASE =
   process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
 
-const handler = NextAuth({
+const authConfig = {
   providers: [
-    CredentialsProvider({
+    Credentials({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "text" },
@@ -38,15 +38,15 @@ const handler = NextAuth({
   ],
   session: { strategy: "jwt" },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
-        token.accessToken = (user as any).accessToken;
-        token.email = (user as any).email;
-        token.role = (user as any).role;
+        token.accessToken = user.accessToken;
+        token.email = user.email;
+        token.role = user.role;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       (session as any).accessToken = token.accessToken;
       (session.user as any).email = token.email;
       (session as any).role = token.role;
@@ -54,6 +54,9 @@ const handler = NextAuth({
     },
   },
   pages: { signIn: "/en/login" },
-});
+} as const;
 
-export { handler as GET, handler as POST };
+const { handlers } = NextAuth(authConfig);
+
+export const GET = handlers.GET;
+export const POST = handlers.POST;
