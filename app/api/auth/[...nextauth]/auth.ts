@@ -1,10 +1,11 @@
+// app/api/auth/[...nextauth]/auth.ts
+import type { NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import type { NextAuthOptions } from "next-auth";
 
 const BACKEND_BASE =
   process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
 
-export const authOptions: NextAuthOptions = {
+export const authConfig: NextAuthConfig = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -13,9 +14,10 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        const c = (credentials ?? {}) as Record<string, string>;
-        const email = (c.email ?? "").trim().toLowerCase();
-        const password = c.password ?? "";
+        const email = String((credentials as any)?.email ?? "")
+          .trim()
+          .toLowerCase();
+        const password = String((credentials as any)?.password ?? "");
 
         if (!email || !password) return null;
 
@@ -27,13 +29,13 @@ export const authOptions: NextAuthOptions = {
 
         if (!res.ok) return null;
 
-        const data = await res.json().catch(() => ({} as any));
+        const data = await res.json().catch(() => ({}));
 
         return {
           id: email,
           email,
-          accessToken: data.access_token,
-          isAdmin: false,
+          accessToken: data?.access_token,
+          isAdmin: data?.role === "admin" || data?.is_admin === true,
         } as any;
       },
     }),
@@ -46,17 +48,19 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.accessToken = (user as any).accessToken;
         token.email = (user as any).email;
-        token.isAdmin = (user as any).isAdmin ?? false;
+        token.isAdmin = (user as any).isAdmin;
       }
       return token;
     },
     async session({ session, token }) {
-      (session as any).accessToken = token.accessToken;
-      if (session.user) (session.user as any).email = token.email;
-      (session as any).isAdmin = token.isAdmin;
+      (session as any).accessToken = (token as any).accessToken;
+      (session.user as any).email = (token as any).email;
+      (session as any).isAdmin = (token as any).isAdmin;
       return session;
     },
   },
 
-  pages: { signIn: "/en/login" },
+  pages: {
+    signIn: "/en/login",
+  },
 };
