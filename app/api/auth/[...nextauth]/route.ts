@@ -1,9 +1,10 @@
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const BACKEND_BASE = process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
+const BACKEND_BASE =
+  process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -20,42 +21,62 @@ const handler = NextAuth({
         const res = await fetch(`${BACKEND_BASE}/api/auth/login-json`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          // importante: sempre JSON
           body: JSON.stringify({ email, password }),
         });
 
         if (!res.ok) return null;
 
+        // backend retorna { access_token, token_type }
         const data = await res.json();
 
-        // espera {access_token, user:{...}} — se não tiver user, cria um mínimo
-        const user = data.user || { id: email, email };
+        const accessToken = data?.access_token;
+        if (!accessToken) return null;
+
         return {
-          id: String(user.id ?? email),
-          email: user.email ?? email,
-          accessToken: data.access_token,
-          isAdmin: user.is_admin ?? false,
+          id: email,
+          email,
+          accessToken,
+          // se você quiser controlar admin por role depois:
+          isAdmin: false,
         } as any;
       },
     }),
   ],
+
   session: { strategy: "jwt" },
+
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.accessToken = (user as any).accessToken;
         token.email = (user as any).email;
-        token.isAdmin = (user as any).isAdmin;
+        token.isAdmin = (user as any).isAdmin ?? false;
       }
       return token;
     },
+
     async session({ session, token }) {
+      // garante que session.user exista
+      if (!session.user) session.user = {} as any;
+
       (session as any).accessToken = token.accessToken;
-      (session.user as any).email = token.email;
       (session as any).isAdmin = token.isAdmin;
+
+      (session.user as any).email = token.email;
+      (session.user as any).accessToken = token.accessToken;
+
       return session;
     },
   },
+
+  // ⚠️ Isso aqui evita alguns loops dependendo do locale
   pages: { signIn: "/en/login" },
-});
+
+  // Ajuda MUITO a debugar no Render
+  debug: process.env.NODE_ENV !== "production",
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
