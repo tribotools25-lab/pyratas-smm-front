@@ -1,8 +1,8 @@
+// app/api/auth/[...nextauth]/route.ts
 import NextAuth from "next-auth";
-import { authOptions } from "./auth";
+import { authConfig } from "./auth";
 
-const nextAuthResult = NextAuth(authOptions as any);
+export const { handlers } = NextAuth(authConfig);
 
-// ✅ App Router quer exports diretos de funções GET/POST
-export const GET = nextAuthResult.handlers.GET;
-export const POST = nextAuthResult.handlers.POST;
+export const GET = handlers.GET;
+export const POST = handlers.POST;
