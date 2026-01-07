@@ -1,15 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-
-const BACKEND_URL = "https://pyratas-smm-api.onrender.com";
+import { signIn } from "next-auth/react";
 
 type Mode = "login" | "register";
 
+const BACKEND_URL = "https://pyratas-smm-api.onrender.com";
+
 export default function LoginClient() {
   const sp = useSearchParams();
-  const next = sp.get("next") || "/";
+  const next = sp.get("next") || "/en";
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -24,28 +25,32 @@ export default function LoginClient() {
     return v.includes("@") && v.includes(".");
   }, [email]);
 
+  // =========================
+  // LOGIN (NextAuth)
+  // =========================
   async function handleLogin() {
     setError("");
     setSuccess("");
     setLoading(true);
 
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/login-json`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
+    const res = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
 
-      if (!res.ok) throw new Error("Credenciais inválidas");
+    if (res?.ok) {
       window.location.href = next;
-    } catch {
-      setError("Login inválido");
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    setError("Email ou senha inválidos");
+    setLoading(false);
   }
 
+  // =========================
+  // REGISTER (Backend direto)
+  // =========================
   async function handleRegister() {
     setError("");
     setSuccess("");
@@ -61,18 +66,22 @@ export default function LoginClient() {
       const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: e, password, role: "user" }),
+        body: JSON.stringify({ email: e, password }),
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) return setError(data?.detail || "Erro ao criar conta.");
 
-      setSuccess("Conta criada! Agora faça login.");
+      if (!res.ok) {
+        setError(data?.detail || "Erro ao criar conta.");
+        setLoading(false);
+        return;
+      }
+
+      setSuccess("Conta criada com sucesso! Faça login.");
       setMode("login");
       setPassword("");
     } catch {
-      setError("Erro ao criar conta. Tente novamente.");
+      setError("Erro ao criar conta.");
     } finally {
       setLoading(false);
     }
@@ -82,7 +91,6 @@ export default function LoginClient() {
     <div className="max-w-sm mx-auto mt-20 space-y-4">
       <h1 className="text-2xl font-bold text-white text-center">Pyratas</h1>
 
-      {/* Botões bem explícitos */}
       <div className="flex gap-2">
         <button
           type="button"
