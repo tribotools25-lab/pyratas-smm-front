@@ -1,6 +1,10 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth";
 
-const handler = NextAuth(authConfig);
+const { handlers } = NextAuth(authConfig);
 
-export { handler as GET, handler as POST };
+export const GET = handlers.GET;
+export const POST = handlers.POST;
+
+// (opcional, mas ajuda o Next a não tentar Edge)
+export const runtime = "nodejs";
