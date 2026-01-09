@@ -5,7 +5,6 @@ const BACKEND_BASE =
   process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
 
 export const authConfig: NextAuthConfig = {
-  // ✅ ESSENCIAL NO RENDER (resolve UntrustedHost)
   trustHost: true,
 
   providers: [
@@ -16,9 +15,7 @@ export const authConfig: NextAuthConfig = {
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        const email = String((credentials as any)?.email ?? "")
-          .trim()
-          .toLowerCase();
+        const email = String((credentials as any)?.email ?? "").trim().toLowerCase();
         const password = String((credentials as any)?.password ?? "");
 
         if (!email || !password) return null;
@@ -37,7 +34,7 @@ export const authConfig: NextAuthConfig = {
           id: email,
           email,
           accessToken: data?.access_token,
-          isAdmin: data?.role === "admin" || data?.is_admin === true,
+          isAdmin: false,
         } as any;
       },
     }),
