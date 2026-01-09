@@ -64,3 +64,12 @@ export const authConfig: NextAuthConfig = {
     signIn: "/en/login",
   },
 };
+
+export const authConfig: NextAuthConfig = {
+  trustHost: true, // ✅ ESSENCIAL NO RENDER
+  providers: [
+    // ...
+  ],
+  // resto igual
+};
+
