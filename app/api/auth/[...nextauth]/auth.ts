@@ -1,22 +1,22 @@
+import Credentials from "next-auth/providers/credentials";
 import type { NextAuthConfig } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
 
 const BACKEND_BASE =
   process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
 
 export const authConfig: NextAuthConfig = {
-  trustHost: true,
+  trustHost: true, // 🔴 OBRIGATÓRIO NO RENDER
 
   providers: [
-    CredentialsProvider({
+    Credentials({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "text" },
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        const email = String((credentials as any)?.email ?? "").trim().toLowerCase();
-        const password = String((credentials as any)?.password ?? "");
+        const email = String(credentials?.email ?? "").trim().toLowerCase();
+        const password = String(credentials?.password ?? "");
 
         if (!email || !password) return null;
 
@@ -28,14 +28,14 @@ export const authConfig: NextAuthConfig = {
 
         if (!res.ok) return null;
 
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json();
 
         return {
           id: email,
           email,
-          accessToken: data?.access_token,
-          isAdmin: false,
-        } as any;
+          accessToken: data.access_token,
+          isAdmin: data.is_admin === true,
+        };
       },
     }),
   ],
@@ -43,23 +43,21 @@ export const authConfig: NextAuthConfig = {
   session: { strategy: "jwt" },
 
   callbacks: {
-    async jwt({ token, user }) {
+    jwt({ token, user }) {
       if (user) {
-        (token as any).accessToken = (user as any).accessToken;
-        (token as any).email = (user as any).email;
-        (token as any).isAdmin = (user as any).isAdmin;
+        token.accessToken = (user as any).accessToken;
+        token.isAdmin = (user as any).isAdmin;
       }
       return token;
     },
-    async session({ session, token }) {
-      (session as any).accessToken = (token as any).accessToken;
-      (session.user as any).email = (token as any).email;
-      (session as any).isAdmin = (token as any).isAdmin;
+    session({ session, token }) {
+      (session as any).accessToken = token.accessToken;
+      (session as any).isAdmin = token.isAdmin;
       return session;
     },
   },
 
   pages: {
-    signIn: "/en/login",
+    signIn: "/pt/login",
   },
 };
