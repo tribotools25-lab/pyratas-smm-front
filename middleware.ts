@@ -1,98 +1,91 @@
 import createMiddleware from "next-intl/middleware";
-import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { locales } from "@/config";
+import { NextRequest, NextResponse } from "next/server";
 
-const DEFAULT_LOCALE = "pt";
+// ✅ Se você NÃO tem "@/config", crie /config.ts na raiz
+// export const locales = ["pt","en"] as const;
+// export const defaultLocale = "pt";
+import { locales, defaultLocale } from "@/config";
 
-// garante que não tem duplicado tipo ["pt","pt","en"]
-const LOCALES = Array.from(new Set(locales));
-
-const intl = createMiddleware({
-  locales: LOCALES,
-  defaultLocale: DEFAULT_LOCALE,
+const i18n = createMiddleware({
+  locales: [...locales],
+  defaultLocale,
 });
 
-function isLocale(v: string) {
-  return LOCALES.includes(v as any);
-}
-
-function normalizeLocalePath(pathname: string) {
-  // exemplos que aparecem no seu log:
-  // /pt/pt/pt/...  -> /pt/...
-  // /en/pt/login   -> /en/login   (mantém o primeiro locale)
-  const parts = pathname.split("/").filter(Boolean); // ["pt","pt","login"]
-
-  if (parts.length >= 2 && isLocale(parts[0]) && isLocale(parts[1])) {
-    // remove o segundo locale
-    const fixed = [parts[0], ...parts.slice(2)];
-    return "/" + fixed.join("/");
-  }
-
-  if (parts.length >= 3 && isLocale(parts[0]) && parts[1] === parts[0]) {
-    // caso /pt/pt/...
-    const fixed = [parts[0], ...parts.slice(2)];
-    return "/" + fixed.join("/");
-  }
-
-  return pathname;
-}
-
+// rotas públicas (sem auth)
 function isPublicPath(pathname: string) {
-  // deixa público login em qualquer locale
-  if (pathname === "/login") return true;
-
-  const parts = pathname.split("/").filter(Boolean);
-  const first = parts[0];
-  const afterLocale = isLocale(first) ? "/" + parts.slice(1).join("/") : pathname;
-
+  // aceita /pt/login, /en/login, /login, etc.
   return (
-    afterLocale === "/login" ||
-    afterLocale.startsWith("/login/") ||
+    pathname === "/" ||
+    pathname.endsWith("/login") ||
+    pathname.includes("/login?") ||
+    pathname.endsWith("/set-password") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   );
 }
 
-export default auth((request) => {
-  const { pathname } = request.nextUrl;
+// ✅ cookies reais do next-auth v5 (Auth.js)
+function hasAuthSessionCookie(req: NextRequest) {
+  const names = [
+    "authjs.session-token",
+    "__Secure-authjs.session-token",
+    "next-auth.session-token",
+    "__Secure-next-auth.session-token",
+  ];
+  return names.some((n) => !!req.cookies.get(n)?.value);
+}
 
-  // não mexe em /api, assets e arquivos
-  if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".")) {
+// ✅ remove locale duplicado: /en/pt/x -> /en/x
+function normalizeDoubleLocale(pathname: string) {
+  const parts = pathname.split("/").filter(Boolean); // remove vazios
+  if (parts.length >= 2) {
+    const first = parts[0];
+    const second = parts[1];
+    if (locales.includes(first as any) && locales.includes(second as any)) {
+      // mantém o primeiro e remove o segundo
+      const fixed = `/${[first, ...parts.slice(2)].join("/")}`;
+      return fixed === "/" ? "/" : fixed;
+    }
+  }
+  return pathname;
+}
+
+export default function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // ✅ nunca mexer nas rotas de API do NextAuth / Next
+  if (pathname.startsWith("/api") || pathname.startsWith("/_next")) {
     return NextResponse.next();
   }
 
-  // ✅ 1) NORMALIZA antes de qualquer coisa (mata /pt/pt e /en/pt)
-  const normalized = normalizeLocalePath(pathname);
+  // ✅ normaliza “/en/pt/...”
+  const normalized = normalizeDoubleLocale(pathname);
   if (normalized !== pathname) {
-    const url = request.nextUrl.clone();
+    const url = req.nextUrl.clone();
     url.pathname = normalized;
     return NextResponse.redirect(url);
   }
 
-  // ✅ 2) roda next-intl
-  const intlResponse = intl(request);
+  // ✅ aplica i18n
+  const res = i18n(req);
 
-  // se next-intl quer redirecionar, respeita
-  const location = intlResponse.headers.get("location");
-  if (location) return intlResponse;
+  // ✅ libera rotas públicas
+  if (isPublicPath(req.nextUrl.pathname)) return res;
 
-  // ✅ 3) libera rotas públicas
-  if (isPublicPath(pathname)) return intlResponse;
+  // ✅ detecta locale atual
+  const seg = req.nextUrl.pathname.split("/")[1];
+  const locale = locales.includes(seg as any) ? seg : defaultLocale;
 
-  // ✅ 4) protege rotas privadas pelo NextAuth
-  if (!request.auth?.user) {
-    const parts = pathname.split("/").filter(Boolean);
-    const locale = isLocale(parts[0]) ? parts[0] : DEFAULT_LOCALE;
-
-    const url = request.nextUrl.clone();
+  // ✅ auth guard: se não tem cookie de sessão do Auth.js, manda pro login
+  if (!hasAuthSessionCookie(req)) {
+    const url = req.nextUrl.clone();
     url.pathname = `/${locale}/login`;
-    url.searchParams.set("next", pathname);
+    url.searchParams.set("next", req.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
 
-  return intlResponse;
-});
+  return res;
+}
 
 export const config = {
   matcher: ["/((?!api|_next|.*\\..*).*)"],
