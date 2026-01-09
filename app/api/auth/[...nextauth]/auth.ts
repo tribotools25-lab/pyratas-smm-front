@@ -1,4 +1,3 @@
-// app/api/auth/[...nextauth]/auth.ts
 import type { NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
@@ -6,6 +5,9 @@ const BACKEND_BASE =
   process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
 
 export const authConfig: NextAuthConfig = {
+  // ✅ ESSENCIAL NO RENDER (resolve UntrustedHost)
+  trustHost: true,
+
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -46,9 +48,9 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.accessToken = (user as any).accessToken;
-        token.email = (user as any).email;
-        token.isAdmin = (user as any).isAdmin;
+        (token as any).accessToken = (user as any).accessToken;
+        (token as any).email = (user as any).email;
+        (token as any).isAdmin = (user as any).isAdmin;
       }
       return token;
     },
@@ -64,12 +66,3 @@ export const authConfig: NextAuthConfig = {
     signIn: "/en/login",
   },
 };
-
-export const authConfig: NextAuthConfig = {
-  trustHost: true, // ✅ ESSENCIAL NO RENDER
-  providers: [
-    // ...
-  ],
-  // resto igual
-};
-
