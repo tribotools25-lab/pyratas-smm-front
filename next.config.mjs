@@ -1,34 +1,16 @@
-import createNextIntlPlugin from "next-intl/plugin";
-
 /** @type {import('next').NextConfig} */
-
-const withNextIntl = createNextIntlPlugin();
-
 const nextConfig = {
-  images: {
-    remotePatterns: [
+  async rewrites() {
+    const backend =
+      process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
+
+    return [
       {
-        protocol: "https",
-        hostname: "api.lorem.space",
+        source: "/api/backend/:path*",
+        destination: `${backend}/:path*`,
       },
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com",
-      },
-      {
-        protocol: "https",
-        hostname: "a0.muscache.com",
-      },
-      {
-        protocol: "https",
-        hostname: "avatars.githubusercontent.com",
-      },
-      {
-        protocol: "https",
-        hostname: "i.pravatar.cc",
-      },
-    ],
+    ];
   },
 };
 
-export default withNextIntl(nextConfig);
+export default nextConfig;
