@@ -1,51 +1,41 @@
-// app/api/backend/[...path]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND =
-  process.env.BACKEND_BASE ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://pyratas-smm-api.onrender.com";
+const BACKEND_BASE =
+  process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
 
-function buildTarget(req: NextRequest, pathParts: string[]) {
-  const target = new URL(BACKEND.replace(/\/$/, "") + "/" + pathParts.join("/"));
+async function proxy(req: NextRequest, ctx: { params: { path: string[] } }) {
+  const { path } = ctx.params;
 
-  // repassa querystring
-  req.nextUrl.searchParams.forEach((v, k) => target.searchParams.set(k, v));
-  return target;
-}
+  const url = new URL(req.url);
+  const targetUrl = `${BACKEND_BASE}/${path.join("/")}${url.search}`;
 
-async function handler(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
-  const { path } = await ctx.params;
-  const url = buildTarget(req, path);
-
-  // copia headers relevantes (sem host)
   const headers = new Headers(req.headers);
   headers.delete("host");
 
-  const hasBody = !["GET", "HEAD"].includes(req.method);
-  const body = hasBody ? await req.arrayBuffer() : undefined;
+  const method = req.method.toUpperCase();
+  const body =
+    method === "GET" || method === "HEAD" ? undefined : await req.arrayBuffer();
 
-  const upstream = await fetch(url, {
-    method: req.method,
+  const upstream = await fetch(targetUrl, {
+    method,
     headers,
     body,
     redirect: "manual",
   });
 
-  const respHeaders = new Headers(upstream.headers);
-
-  // garante que não quebra com encoding
-  respHeaders.delete("content-encoding");
+  const resHeaders = new Headers(upstream.headers);
+  resHeaders.delete("content-encoding"); // evita bug de gzip/brotli em alguns hosts
 
   return new NextResponse(upstream.body, {
     status: upstream.status,
-    headers: respHeaders,
+    headers: resHeaders,
   });
 }
 
-export const GET = handler;
-export const POST = handler;
-export const PUT = handler;
-export const PATCH = handler;
-export const DELETE = handler;
-export const OPTIONS = handler;
+export const GET = proxy;
+export const POST = proxy;
+export const PUT = proxy;
+export const PATCH = proxy;
+export const DELETE = proxy;
+
+export const runtime = "nodejs";
