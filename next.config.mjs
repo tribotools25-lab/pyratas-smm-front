@@ -1,16 +1,8 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  async rewrites() {
-    const backend =
-      process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
+// next.config.ts
+import {NextConfig} from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
 
-    return [
-      {
-        source: "/api/backend/:path*",
-        destination: `${backend}/:path*`,
-      },
-    ];
-  },
-};
+const nextConfig: NextConfig = {};
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin();
+export default withNextIntl(nextConfig);
