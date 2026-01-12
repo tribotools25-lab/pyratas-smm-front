@@ -1,41 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
+import {NextRequest, NextResponse} from "next/server";
 
-const BACKEND_BASE =
-  process.env.BACKEND_BASE || "https://pyratas-smm-api.onrender.com";
+const BACKEND_URL = process.env.BACKEND_URL; // ex: https://investbonus-api.onrender.com
 
-async function proxy(req: NextRequest, ctx: { params: { path: string[] } }) {
-  const { path } = ctx.params;
-
+function buildTargetUrl(req: NextRequest, path: string[]) {
   const url = new URL(req.url);
-  const targetUrl = `${BACKEND_BASE}/${path.join("/")}${url.search}`;
+  const target = new URL(path.join("/"), BACKEND_URL);
+  target.search = url.search; // preserva querystring
+  return target;
+}
 
+async function proxy(req: NextRequest, ctx: {params: {path: string[]}}) {
+  if (!BACKEND_URL) {
+    return NextResponse.json(
+      {error: "BACKEND_URL is not set"},
+      {status: 500}
+    );
+  }
+
+  const target = buildTargetUrl(req, ctx.params.path);
+
+  // Copia headers úteis
   const headers = new Headers(req.headers);
   headers.delete("host");
 
-  const method = req.method.toUpperCase();
-  const body =
-    method === "GET" || method === "HEAD" ? undefined : await req.arrayBuffer();
-
-  const upstream = await fetch(targetUrl, {
-    method,
+  const init: RequestInit = {
+    method: req.method,
     headers,
-    body,
-    redirect: "manual",
-  });
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer(),
+    redirect: "manual"
+  };
 
-  const resHeaders = new Headers(upstream.headers);
-  resHeaders.delete("content-encoding"); // evita bug de gzip/brotli em alguns hosts
+  const res = await fetch(target.toString(), init);
 
-  return new NextResponse(upstream.body, {
-    status: upstream.status,
-    headers: resHeaders,
+  // Retorna status + headers + body
+  const resHeaders = new Headers(res.headers);
+  return new NextResponse(res.body, {
+    status: res.status,
+    headers: resHeaders
   });
 }
 
-export const GET = proxy;
-export const POST = proxy;
-export const PUT = proxy;
-export const PATCH = proxy;
-export const DELETE = proxy;
-
-export const runtime = "nodejs";
+export async function GET(req: NextRequest, ctx: any) { return proxy(req, ctx); }
+export async function POST(req: NextRequest, ctx: any) { return proxy(req, ctx); }
+export async function PUT(req: NextRequest, ctx: any) { return proxy(req, ctx); }
+export async function PATCH(req: NextRequest, ctx: any) { return proxy(req, ctx); }
+export async function DELETE(req: NextRequest, ctx: any) { return proxy(req, ctx); }
