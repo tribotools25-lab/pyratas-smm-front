@@ -1,3 +1,5 @@
 {
-  "hello": "Hello"
+  "Login": {
+    "title": "Sign in"
+  }
 }
