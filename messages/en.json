@@ -1,5 +1,1 @@
-{
-  "common": {
-    "hello": "Hello"
-  }
-}
+{ "common": { "ok": "ok" } }
