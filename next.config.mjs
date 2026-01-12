@@ -1,8 +1,10 @@
-// next.config.ts
-import {NextConfig} from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
-const nextConfig: NextConfig = {};
+const withNextIntl = createNextIntlPlugin(); // ou passe o caminho: createNextIntlPlugin('./src/i18n/request.ts')
 
-const withNextIntl = createNextIntlPlugin();
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true
+};
+
 export default withNextIntl(nextConfig);
