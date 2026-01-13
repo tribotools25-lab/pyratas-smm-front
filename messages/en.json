@@ -1,3 +1,5 @@
 {
-  "Menu": "Menu"
+  "Menu": {
+    "dashboard": "Dashboard"
+  }
 }
