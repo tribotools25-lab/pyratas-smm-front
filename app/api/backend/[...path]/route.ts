@@ -1,47 +1,37 @@
-import {NextRequest, NextResponse} from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL; // ex: https://investbonus-api.onrender.com
+const BASE_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
 
-function buildTargetUrl(req: NextRequest, path: string[]) {
+function buildTargetUrl(req: NextRequest, path: string) {
+  if (!BASE_URL) throw new Error('Missing BACKEND_URL env');
   const url = new URL(req.url);
-  const target = new URL(path.join("/"), BACKEND_URL);
-  target.search = url.search; // preserva querystring
+  const target = new URL(path, BASE_URL);
+  target.search = url.search;
   return target;
 }
 
-async function proxy(req: NextRequest, ctx: {params: {path: string[]}}) {
-  if (!BACKEND_URL) {
-    return NextResponse.json(
-      {error: "BACKEND_URL is not set"},
-      {status: 500}
-    );
-  }
+async function handler(req: NextRequest, ctx: { params: { path: string[] } }) {
+  const path = ctx.params.path.join('/');
+  const targetUrl = buildTargetUrl(req, path);
 
-  const target = buildTargetUrl(req, ctx.params.path);
-
-  // Copia headers úteis
   const headers = new Headers(req.headers);
-  headers.delete("host");
+  headers.delete('host');
 
-  const init: RequestInit = {
+  const res = await fetch(targetUrl, {
     method: req.method,
     headers,
-    body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer(),
-    redirect: "manual"
-  };
+    body: ['GET', 'HEAD'].includes(req.method) ? undefined : await req.arrayBuffer(),
+    redirect: 'manual'
+  });
 
-  const res = await fetch(target.toString(), init);
-
-  // Retorna status + headers + body
-  const resHeaders = new Headers(res.headers);
   return new NextResponse(res.body, {
     status: res.status,
-    headers: resHeaders
+    headers: res.headers
   });
 }
 
-export async function GET(req: NextRequest, ctx: any) { return proxy(req, ctx); }
-export async function POST(req: NextRequest, ctx: any) { return proxy(req, ctx); }
-export async function PUT(req: NextRequest, ctx: any) { return proxy(req, ctx); }
-export async function PATCH(req: NextRequest, ctx: any) { return proxy(req, ctx); }
-export async function DELETE(req: NextRequest, ctx: any) { return proxy(req, ctx); }
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;
+export const PATCH = handler;
+export const DELETE = handler;
